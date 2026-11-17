@@ -1,5 +1,5 @@
 class Goodcomments < Formula
-  desc "Feedback tracker at the edge of your screen: open, fixed by you or your agents, done"
+  desc "Feedback tracker at your screen edge: open, fixed by agents, checked by you"
   homepage "https://github.com/sdezubiria/goodcomments"
   url "https://github.com/sdezubiria/goodcomments/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "426d5643f423c6c2c8c828f0f8da5c7bd1b1c55cce06c7382f8dc5491e95c7e6"
@@ -10,15 +10,16 @@ class Goodcomments < Formula
 
   def install
     libexec.install Dir["*"]
-    (bin/"gc").write_env_script libexec/"bin/gc.js", PATH: "#{Formula["node"].opt_bin}:$PATH"
+    (bin/"gc").write_env_script libexec/"bin/gc.js", PATH: "#{formula_opt_bin("node")}:$PATH"
 
     # The menu bar app is built here (needs Swift from the Xcode Command Line Tools).
     # Ad-hoc signed: Homebrew builds can't use your keychain's signing identity.
-    cd libexec/"mac" do
-      unless quiet_system({ "GOODCOMMENTS_SIGN_IDENTITY" => "-" }, "sh", "build.sh")
-        opoo "Couldn't build the menu bar app (install the Command Line Tools: xcode-select --install). " \
-             "The board still works in the browser: gc open"
-      end
+    built = with_env(GOODCOMMENTS_SIGN_IDENTITY: "-") do
+      cd(libexec/"mac") { quiet_system "sh", "build.sh" }
+    end
+    unless built
+      opoo "Couldn't build the menu bar app (install the Command Line Tools: xcode-select --install). " \
+           "The board still works in the browser: gc open"
     end
   end
 
@@ -51,7 +52,7 @@ class Goodcomments < Formula
     port = free_port
     ENV["GOODCOMMENTS_PORT"] = port.to_s
     ENV["GOODCOMMENTS_DB"] = (testpath/"test.db").to_s
-    pid = spawn bin/"gc", "serve"
+    pid = spawn((bin/"gc").to_s, "serve")
     begin
       sleep 2
       system bin/"gc", "project", "add", "Test"
